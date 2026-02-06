@@ -1,0 +1,75 @@
+--- Job ID: 2401199 ---
+Nodo: wn42
+--- CHECK NVIDIA-SMI ---
+Fri Feb  6 22:19:31 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.144.03             Driver Version: 550.144.03     CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla P100-PCIE-12GB           On  |   00000000:04:00.0 Off |                    0 |
+| N/A   31C    P0             23W /  250W |       0MiB /  12288MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+----------------------
+✅ Ambiente trovato. Attivazione...
+🔧 Verifica installazione XGBoost...
+Requirement already satisfied: xgboost==2.0.3 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (2.0.3)
+Requirement already satisfied: numpy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (2.2.6)
+Requirement already satisfied: scipy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (1.15.2)
+🚀 Avvio main.py...
+📊 Caricamento bioactivities...
+📊 Caricamento mass_spectra_embeddings...
+📊 Caricamento protein_embeddings...
+
+✅ Dataset caricati con successo!
+   - Bioactivities: (10092, 36)
+   - Molecules: (5798, 507)
+   - Proteins (UniRep1900): (1142, 5701)
+Soglia ottimale: 5.16
+active: 5058 | inactive: 5034
+
+✅ Dataset merged:
+df_merged: (106055, 6205)
+
+--- BILANCIAMENTO CLASSI ---
+Originale (Active): 50.12%
+Merged    (Active): 53.38%
+📊 Dataset preparato:
+   - 500 features molecola + 5700 features proteina = 6200 totali
+   - 714 molecole distinte
+   - 106055 campioni totali
+
+✅ StratifiedGroupKFold con 5 fold configurato
+Mappatura classi: inactive=0, active=1
+
+===========================================================================
+🚀 TRAINING E VALIDAZIONE
+===========================================================================
+
+📈 Risultati per configurazione:
+   pca32_XGBoost: Recall = 0.733 ± 0.055
+   pca32_RandomForest: Recall = 0.730 ± 0.061
+   pca64_XGBoost: Recall = 0.740 ± 0.051
+   pca64_RandomForest: Recall = 0.725 ± 0.065
+   pca128_XGBoost: Recall = 0.727 ± 0.056
+   pca128_RandomForest: Recall = 0.718 ± 0.060
+   pca256_XGBoost: Recall = 0.720 ± 0.057
+   pca256_RandomForest: Recall = 0.724 ± 0.053
+   pca500_XGBoost: Recall = 0.696 ± 0.067
+   pca500_RandomForest: Recall = 0.724 ± 0.049
+   lda_XGBoost: Recall = 0.684 ± 0.041
+   lda_RandomForest: Recall = 0.652 ± 0.031
+
+📊 TABELLA RISULTATI FINALE:
+🏁 Terminato.

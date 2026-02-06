@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/hpc/home/francesco.bernini1/LABAI2526/bioactivity-prediction/main.py", line 499, in <module>
+    display(df_results)
+NameError: name 'display' is not defined
