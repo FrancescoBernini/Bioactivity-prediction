@@ -1,0 +1,102 @@
+--- Job ID: 2401295 ---
+Nodo: wn42
+--- CHECK NVIDIA-SMI ---
+Sat Feb  7 13:27:32 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.144.03             Driver Version: 550.144.03     CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla P100-PCIE-12GB           On  |   00000000:04:00.0 Off |                    0 |
+| N/A   31C    P0             23W /  250W |       0MiB /  12288MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+----------------------
+✅ Ambiente trovato. Attivazione...
+🔧 Verifica installazione XGBoost...
+Requirement already satisfied: xgboost==2.0.3 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (2.0.3)
+Requirement already satisfied: numpy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (2.2.6)
+Requirement already satisfied: scipy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (1.15.2)
+🚀 Avvio main.py...
+📊 Caricamento bioactivities...
+📊 Caricamento mass_spectra_embeddings...
+📊 Caricamento protein_embeddings...
+
+✅ Dataset caricati con successo!
+   - Bioactivities: (10092, 36)
+   - Molecules: (5798, 507)
+   - Proteins (UniRep1900): (1142, 5701)
+Soglia ottimale: 5.16
+active: 5058 | inactive: 5034
+
+✅ Dataset merged:
+df_merged: (106055, 6205)
+
+--- BILANCIAMENTO CLASSI ---
+Originale (Active): 50.12%
+Merged    (Active): 53.38%
+📊 Dataset preparato:
+   - 500 features molecola + 5700 features proteina = 6200 totali
+   - 1142 proteine distinte
+   - 106055 campioni totali
+
+✅ StratifiedGroupKFold con 5 fold configurato
+Mappatura classi: inactive=0, active=1
+
+===========================================================================
+🚀 TRAINING E VALIDAZIONE
+===========================================================================
+
+📈 Risultati per configurazione:
+   pca32_XGBoost: Recall = 0.734 ± 0.028
+   pca32_RandomForest: Recall = 0.768 ± 0.028
+   pca64_XGBoost: Recall = 0.749 ± 0.029
+   pca64_RandomForest: Recall = 0.784 ± 0.037
+   pca128_XGBoost: Recall = 0.735 ± 0.024
+   pca128_RandomForest: Recall = 0.791 ± 0.027
+   pca256_XGBoost: Recall = 0.754 ± 0.025
+   pca256_RandomForest: Recall = 0.810 ± 0.045
+   pca500_XGBoost: Recall = 0.749 ± 0.039
+   pca500_RandomForest: Recall = 0.826 ± 0.032
+   lda_XGBoost: Recall = 0.571 ± 0.092
+   lda_RandomForest: Recall = 0.559 ± 0.089
+
+📊 TABELLA RISULTATI FINALE:
+   Reduction         Model     Accuracy  ...       Recall     F1-score          MCC
+9   PCA(500)  RandomForest  0.640±0.018  ...  0.826±0.032  0.710±0.014  0.278±0.043
+7   PCA(256)  RandomForest  0.659±0.028  ...  0.810±0.045  0.717±0.019  0.317±0.058
+5   PCA(128)  RandomForest  0.663±0.021  ...  0.791±0.027  0.715±0.013  0.321±0.045
+3    PCA(64)  RandomForest  0.667±0.020  ...  0.784±0.037  0.715±0.016  0.330±0.043
+1    PCA(32)  RandomForest  0.667±0.020  ...  0.768±0.028  0.712±0.013  0.329±0.044
+6   PCA(256)       XGBoost  0.665±0.021  ...  0.754±0.025  0.706±0.017  0.324±0.045
+8   PCA(500)       XGBoost  0.644±0.021  ...  0.749±0.039  0.692±0.017  0.281±0.046
+2    PCA(64)       XGBoost  0.659±0.022  ...  0.749±0.029  0.701±0.018  0.311±0.047
+4   PCA(128)       XGBoost  0.650±0.015  ...  0.735±0.024  0.692±0.013  0.294±0.032
+0    PCA(32)       XGBoost  0.661±0.024  ...  0.734±0.028  0.699±0.016  0.317±0.052
+10       LDA       XGBoost  0.525±0.020  ...  0.571±0.092  0.558±0.042  0.046±0.053
+11       LDA  RandomForest  0.523±0.021  ...  0.559±0.089  0.552±0.041  0.041±0.054
+
+[12 rows x 7 columns]
+
+================================================================================
+🧐 DETTAGLIO DISTRIBUZIONE NEI FOLD (Training Recap)
+================================================================================
+Fold  | Train Size |  Val Size  | Train Active %  |  Val Active %  
+---------------------------------------------------------------------------
+  1   |   83880    |   22175    |      53.07     % |      54.53     %
+  2   |   83338    |   22717    |      53.89     % |      51.49     %
+  3   |   83374    |   22681    |      53.44     % |      53.17     %
+  4   |   86450    |   19605    |      53.28     % |      53.81     %
+  5   |   87178    |   18877    |      53.22     % |      54.10     %
+---------------------------------------------------------------------------
+🏁 Terminato.

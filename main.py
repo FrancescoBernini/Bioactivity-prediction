@@ -166,7 +166,7 @@ import xgboost as xgb
 
 # Metrics
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, matthews_corrcoef
 )
 
 # Other
@@ -319,7 +319,7 @@ print(f"Merged    (Active): {prop_new.get('active', 0):.2%}")
 # 
 # Si effettua una **Cross-Validation con k=5 fold** usando `StratifiedGroupKFold` per:
 # 1. **Stratificazione**: mantenere la distribuzione di `active`/`inactive` in ogni fold
-# 2. **Raggruppamento per molecola**: evitare data leakage impedendo che bioattività della stessa molecola siano in train e validation contemporaneamente
+# 2. **Raggruppamento per proteina**: in questo modo si evita che il modello impari la coppia proteina-bioattività visto che alcune proteine compaiono come **sempre** `active` o **sempre** `inactive`
 # 
 # > **Nota**: Standardizzazione e riduzione dimensionalità vengono applicate **dentro il loop di CV** (fit su train, transform su entrambi) per evitare data leakage.
 
@@ -337,11 +337,11 @@ prot_idx = [i for i, c in enumerate(feature_cols) if c.startswith('UniRep')]
 # Preparo i dati per la CV
 X = df_merged[feature_cols].values
 y = df_merged['bioactivity_class'].values
-groups = df_merged['inchikey'].values
+groups = df_merged['target_id'].values
 
 print(f"📊 Dataset preparato:")
 print(f"   - {len(mol_idx)} features molecola + {len(prot_idx)} features proteina = {len(feature_cols)} totali")
-print(f"   - {len(np.unique(groups))} molecole distinte")
+print(f"   - {len(np.unique(groups))} proteine distinte")
 print(f"   - {len(X)} campioni totali")
 
 # Configurazione CV
@@ -356,7 +356,7 @@ print(f"\n✅ StratifiedGroupKFold con {N_SPLITS} fold configurato")
 # - **PCA** (a 32, 64, 128, 256, 500 componenti, applicato separatamente su molecole e proteine)
 # - **LDA** (1 componente)
 # 
-# **Metriche calcolate**: Accuracy, Precision, Recall, F1-score, AUC
+# **Metriche calcolate**: Accuracy, Precision, Recall, F1-score, AUC, MCC
 
 # %%
 # Setup - Mappatura manuale delle classi (active=1, inactive=0)
@@ -407,6 +407,7 @@ def evaluate_fold(X_train, X_val, y_train, y_val, model, key):
     all_results[key]['Recall'].append(recall_score(y_val, y_pred))
     all_results[key]['F1-score'].append(f1_score(y_val, y_pred))
     all_results[key]['AUC'].append(roc_auc_score(y_val, y_proba))
+    all_results[key]['MCC'].append(matthews_corrcoef(y_val, y_pred))
 
 def apply_pca_separated(X_tr, X_val, n_components):
     """Applica PCA separato su molecole e proteine con scaling."""
@@ -490,7 +491,7 @@ for key, metrics in all_results.items():
         'Precision': f"{np.mean(metrics['Precision']):.3f}±{np.std(metrics['Precision']):.3f}",
         'Recall': f"{np.mean(metrics['Recall']):.3f}±{np.std(metrics['Recall']):.3f}",
         'F1-score': f"{np.mean(metrics['F1-score']):.3f}±{np.std(metrics['F1-score']):.3f}",
-        'AUC': f"{np.mean(metrics['AUC']):.3f}±{np.std(metrics['AUC']):.3f}",
+        'MCC': f"{np.mean(metrics['MCC']):.3f}±{np.std(metrics['MCC']):.3f}",
         '_recall': np.mean(metrics['Recall'])
     })
 
@@ -542,7 +543,7 @@ print("-" * 75)
 #
 # # Salvataggio risultati
 #df_results.to_csv('/content/drive/MyDrive/Colab Notebooks/results/StratifiedGroup5Fold_separatedPCAfixedDim_allSpectrums1900.csv', index=False)
-df_results.to_csv('results/StratifiedGroup5Fold_separatedPCAfixedDim_allSpectrums1900.csv', index=False)
+df_results.to_csv('results/5-StratifiedGroupByProtein5Fold_separatedPCAfixedDim_allSpectrums1900.csv', index=False)
 # print(f"✅ Salvati {len(trained_models)} modelli in 'models/' e risultati in 'results/'")
 
 # %%
