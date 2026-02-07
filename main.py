@@ -491,6 +491,7 @@ for key, metrics in all_results.items():
         'Precision': f"{np.mean(metrics['Precision']):.3f}±{np.std(metrics['Precision']):.3f}",
         'Recall': f"{np.mean(metrics['Recall']):.3f}±{np.std(metrics['Recall']):.3f}",
         'F1-score': f"{np.mean(metrics['F1-score']):.3f}±{np.std(metrics['F1-score']):.3f}",
+        'AUC': f"{np.mean(metrics['AUC']):.3f}±{np.std(metrics['AUC']):.3f}",
         'MCC': f"{np.mean(metrics['MCC']):.3f}±{np.std(metrics['MCC']):.3f}",
         '_recall': np.mean(metrics['Recall'])
     })
