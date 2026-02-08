@@ -14,7 +14,7 @@
 ##SBATCH --gres=gpu:l40s_fisstat:1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
-#SBATCH --time=0-05:00:00
+#SBATCH --time=0-10:00:00
 
 # Preparazione cartelle
 mkdir -p outputs
@@ -44,11 +44,14 @@ else
     source activate "$ENV_NAME"
 fi
 
-# 3. VERIFICA E INSTALLAZIONE FORZATA DI XGBOOST
+# Disabilita il buffering di Python
+export PYTHONUNBUFFERED=1
+
+# 3. VERIFICA E INSTALLAZIONE PACCHETTI
 # Questo blocco ora gira SEMPRE, sia che l'ambiente sia nuovo o vecchio.
-# Risolve il "ModuleNotFoundError" installando il pacchetto mancante.
-echo "🔧 Verifica installazione XGBoost..."
-pip install xgboost==2.0.3
+# Risolve il "ModuleNotFoundError" installando i pacchetti mancanti.
+echo "🔧 Verifica installazione XGBoost e UMAP..."
+pip install xgboost==2.0.3 umap-learn
 
 # Variabili per evitare conflitti
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
