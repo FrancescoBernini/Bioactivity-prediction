@@ -62,3 +62,19 @@ Job Wall-clock time: 02:46:21
 Memory Utilized: 32.87 GB
 Memory Efficiency: 51.36% of 64.00 GB
 ```
+
+# 7
+```bash
+[francesco.bernini1@ui01 bioactivity-prediction]$ seff 2401479
+Job ID: 2401479
+Cluster: hpc_prod
+User/Group: francesco.bernini1/Person
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 8
+CPU Utilized: 03:30:10
+CPU Efficiency: 78.23% of 04:28:40 core-walltime
+Job Wall-clock time: 00:33:35
+Memory Utilized: 25.06 GB
+Memory Efficiency: 39.15% of 64.00 GB
+```

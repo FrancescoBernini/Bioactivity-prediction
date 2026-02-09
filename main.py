@@ -2,7 +2,6 @@
 # # TODO
 # 1) usare UMAP invece di LDA
 # 2) sistemare sezione "struttura notebook"
-# - magari provo anche Support vector machine anche se è dell'altro corso
 # - Potrebbe aver senso rimuovere quelle molecole che hanno dev std troppo alta (se > 15 se ne toglierebbero 12 su 714)
 # - fare una dimensionality reduction manuale non ha tanto senso perchè le var in input sono embedding senza quindi un significato chiaro
 
@@ -156,7 +155,6 @@ from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.base import clone
-from umap import UMAP
 
 # Models
 from sklearn.ensemble import RandomForestClassifier
@@ -350,9 +348,10 @@ print(f"\n✅ StratifiedGroupKFold con {N_SPLITS} fold configurato")
 # %% [markdown]
 # # 5) Training e Validazione con Cross-Validation
 # 
-# Si addestrano e validano i modelli **XGBoost** e **Random Forest** con le seguenti tecniche di riduzione dimensionalità:
-# - **PCA** (95% di varianza spiegata, applicato separatamente su molecole e proteine)
-# - **UMAP supervisionato** (a 10 e 32 componenti, applicato separatamente su molecole e proteine)
+# Strategia **"One Shot"**: si addestrano e validano i modelli con iperparametri fissi ottimizzati per massimizzare la **Recall**.
+# 
+# **Modelli**: XGBoost, Random Forest (con iperparametri "best guess")
+# **Riduzione dimensionalità**: PCA a numero fisso di componenti (256 e 500), applicato separatamente su molecole e proteine
 # 
 # **Metriche calcolate**: Accuracy, Precision, Recall, F1-score, AUC, MCC
 
@@ -369,17 +368,27 @@ print(f"Mappatura classi: inactive=0, active=1")
 # CPU assegnate con fallback a 8
 n_jobs = int(os.environ.get('SLURM_CPUS_PER_TASK', 8))
 
+# Configurazioni PCA da testare
+PCA_N_COMPONENTS = [256, 500]
+
 # Definizione modelli
 models = {
-    'XGBoost': xgb.XGBClassifier(random_state=RANDOM_STATE, eval_metric='logloss', device='cuda', n_jobs=n_jobs),
-    'RandomForest': RandomForestClassifier(random_state=RANDOM_STATE, n_estimators=100, n_jobs=n_jobs)
+    'RandomForest': RandomForestClassifier(
+        n_estimators=500,
+        max_depth=None,
+        random_state=RANDOM_STATE,
+        n_jobs=n_jobs
+    ),
+    'XGBoost': xgb.XGBClassifier(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=10,
+        eval_metric='logloss',
+        random_state=RANDOM_STATE,
+        device='cuda',
+        n_jobs=n_jobs
+    ),
 }
-
-# Configurazione PCA: varianza spiegata al 95%
-PCA_VARIANCE = 0.95
-
-# Configurazioni UMAP supervisionato: numero di componenti
-UMAP_N_COMPONENTS = [10, 32]
 
 all_results = defaultdict(lambda: defaultdict(list))
 
@@ -390,7 +399,9 @@ def evaluate_fold(X_train, X_val, y_train, y_val, model, key):
     clf = clone(model)
 
     # 1. TRAIN: Addestriamo usando la configurazione globale (GPU se disponibile)
+    print(f"   ⚙️ Training {key}...", end=" ", flush=True)
     clf.fit(X_train, y_train)
+    print("✅", flush=True)
 
     # 2. FIX WARNING: Se il modello è XGBoost e sta usando la GPU,
     # lo spostiamo su CPU solo per la fase di predizione.
@@ -410,33 +421,17 @@ def evaluate_fold(X_train, X_val, y_train, y_val, model, key):
     all_results[key]['AUC'].append(roc_auc_score(y_val, y_proba))
     all_results[key]['MCC'].append(matthews_corrcoef(y_val, y_pred))
 
-def apply_pca_separated(X_tr, X_val, variance_ratio):
-    """Applica PCA separato su molecole e proteine con scaling, trattenendo il variance_ratio di varianza."""
+def apply_pca_separated(X_tr, X_val, n_comp):
+    """Applica PCA separato su molecole e proteine con scaling, con numero fisso di componenti."""
     scaler_mol, scaler_prot = StandardScaler(), StandardScaler()
 
-    pca_mol = PCA(n_components=variance_ratio, random_state=RANDOM_STATE)
-    pca_prot = PCA(n_components=variance_ratio, random_state=RANDOM_STATE)
+    pca_mol = PCA(n_components=n_comp, random_state=RANDOM_STATE)
+    pca_prot = PCA(n_components=n_comp, random_state=RANDOM_STATE)
     
     X_tr_mol = pca_mol.fit_transform(scaler_mol.fit_transform(X_tr[:, mol_idx]))
     X_tr_prot = pca_prot.fit_transform(scaler_prot.fit_transform(X_tr[:, prot_idx]))
     X_val_mol = pca_mol.transform(scaler_mol.transform(X_val[:, mol_idx]))
     X_val_prot = pca_prot.transform(scaler_prot.transform(X_val[:, prot_idx]))
-    
-    scaler_final = StandardScaler()
-    return scaler_final.fit_transform(np.hstack([X_tr_mol, X_tr_prot])), \
-           scaler_final.transform(np.hstack([X_val_mol, X_val_prot]))
-
-def apply_umap_separated(X_tr, X_val, y_tr, n_components):
-    """Applica UMAP supervisionato separato su molecole e proteine con scaling."""
-    scaler_mol, scaler_prot = StandardScaler(), StandardScaler()
-    
-    umap_mol = UMAP(init='random', n_components=n_components, random_state=RANDOM_STATE, n_jobs=n_jobs)
-    umap_prot = UMAP(init='random', n_components=n_components, random_state=RANDOM_STATE, n_jobs=n_jobs)
-    
-    X_tr_mol = umap_mol.fit_transform(scaler_mol.fit_transform(X_tr[:, mol_idx]), y=y_tr)
-    X_tr_prot = umap_prot.fit_transform(scaler_prot.fit_transform(X_tr[:, prot_idx]), y=y_tr)
-    X_val_mol = umap_mol.transform(scaler_mol.transform(X_val[:, mol_idx]))
-    X_val_prot = umap_prot.transform(scaler_prot.transform(X_val[:, prot_idx]))
     
     scaler_final = StandardScaler()
     return scaler_final.fit_transform(np.hstack([X_tr_mol, X_tr_prot])), \
@@ -451,6 +446,7 @@ print("=" * 75)
 fold_stats = []
 
 for fold_idx, (train_idx, val_idx) in enumerate(cv.split(X, y_enc, groups)):
+    print(f"\n🔄 Fold {fold_idx+1}/{N_SPLITS}")
     X_tr, X_val_raw = X[train_idx], X[val_idx]
     y_tr, y_val = y_enc[train_idx], y_enc[val_idx]
 
@@ -461,17 +457,12 @@ for fold_idx, (train_idx, val_idx) in enumerate(cv.split(X, y_enc, groups)):
     val_active_perc = (y_val == 1).sum() / val_size * 100
     fold_stats.append((fold_idx + 1, train_size, val_size, train_active_perc, val_active_perc))
     
-    # PCA al 95% di varianza
-    X_train_red, X_val_red = apply_pca_separated(X_tr, X_val_raw, PCA_VARIANCE)
-    for model_name, model in models.items():
-        key = f'pca95var_{model_name}'
-        evaluate_fold(X_train_red, X_val_red, y_tr, y_val, model, key)
-    
-    # UMAP supervisionato con diversi numeri di componenti
-    for n_comp in UMAP_N_COMPONENTS:
-        X_train_red, X_val_red = apply_umap_separated(X_tr, X_val_raw, y_tr, n_comp)
+    # PCA con numero fisso di componenti
+    for n_comp in PCA_N_COMPONENTS:
+        print(f" > PCA({n_comp}) processing...", flush=True)
+        X_train_red, X_val_red = apply_pca_separated(X_tr, X_val_raw, n_comp)
         for model_name, model in models.items():
-            key = f'umap{n_comp}_{model_name}'
+            key = f'PCA({n_comp})_{model_name}'
             evaluate_fold(X_train_red, X_val_red, y_tr, y_val, model, key)
 
 # Stampa risultati per ogni configurazione
@@ -483,18 +474,10 @@ for key in all_results:
 # Tabella risultati finale
 results_summary = []
 for key, metrics in all_results.items():
-    # Parsing chiave: 'pca95var_XGBoost' → ('PCA(95%)', 'XGBoost'), 'umap10_RandomForest' → ('UMAP(10)', 'RandomForest')
-    if key.startswith('pca95var'):
-        reduction = 'PCA(95%)'
-        model_part = key.split('_', 1)[1]
-    elif key.startswith('umap'):
-        underscore_pos = key.index('_')
-        reduction = f"UMAP({key[4:underscore_pos]})"
-        model_part = key[underscore_pos+1:]
-    else:
-        parts = key.split('_')
-        reduction = parts[0].upper()
-        model_part = parts[1]
+    # Parsing chiave: 'PCA(256)_XGBoost' → ('PCA(256)', 'XGBoost')
+    parts = key.split('_', 1)
+    reduction = parts[0]
+    model_part = parts[1]
     results_summary.append({
         'Reduction': reduction,
         'Model': model_part,
@@ -536,26 +519,16 @@ print("-" * 75)
 #
 # # PCA con diversi numeri di componenti
 # for n_comp in PCA_N_COMPONENTS:
-#     X_red = apply_pca_separated(X_full, X_full, n_comp)[0]  # solo il primo output (fit su tutto)
+#     X_red = apply_pca_separated_fixed(X_full, X_full, n_comp)[0]  # solo il primo output (fit su tutto)
 #     for model_name, model in models.items():
 #         clf = clone(model).fit(X_red, y_full)
-#         key = f'pca{n_comp}_{model_name}'
+#         key = f'PCA({n_comp})_{model_name}'
 #         trained_models[key] = clf
 #         joblib.dump(clf, f'models/{key}.joblib')
 #
-# # LDA
-# scaler = StandardScaler()
-# lda = LDA(n_components=1)
-# X_red = lda.fit_transform(scaler.fit_transform(X_full), y_full)
-# for model_name, model in models.items():
-#     clf = clone(model).fit(X_red, y_full)
-#     key = f'lda_{model_name}'
-#     trained_models[key] = clf
-#     joblib.dump(clf, f'models/{key}.joblib')
-#
 # # Salvataggio risultati
 #df_results.to_csv('/content/drive/MyDrive/Colab Notebooks/results/StratifiedGroup5Fold_separatedPCAfixedDim_allSpectrums1900.csv', index=False)
-df_results.to_csv('results/6-StratifiedGroupByProtein5Fold_separatedPCA95_separatedUMAP10_32_allSpectrums1900.csv', index=False)
+df_results.to_csv('results/7-StratifiedGroupByProtein5Fold_separatedPCA256PCA500_allSpectrums1900.csv', index=False)
 # print(f"✅ Salvati {len(trained_models)} modelli in 'models/' e risultati in 'results/'")
 
 # %%
