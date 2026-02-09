@@ -1,0 +1,120 @@
+--- Job ID: 2401493 ---
+Nodo: wn41
+--- CHECK NVIDIA-SMI ---
+Mon Feb  9 00:48:46 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 550.144.03             Driver Version: 550.144.03     CUDA Version: 12.4     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla P100-PCIE-12GB           On  |   00000000:05:00.0 Off |                    0 |
+| N/A   29C    P0             24W /  250W |       0MiB /  12288MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+----------------------
+✅ Ambiente trovato. Attivazione...
+🔧 Verifica installazione XGBoost e UMAP...
+Requirement already satisfied: xgboost==2.0.3 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (2.0.3)
+Requirement already satisfied: umap-learn in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (0.5.11)
+Requirement already satisfied: numpy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (2.2.6)
+Requirement already satisfied: scipy in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from xgboost==2.0.3) (1.15.2)
+Requirement already satisfied: scikit-learn>=1.6 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from umap-learn) (1.7.2)
+Requirement already satisfied: numba>=0.51.2 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from umap-learn) (0.63.1)
+Requirement already satisfied: pynndescent>=0.5 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from umap-learn) (0.6.0)
+Requirement already satisfied: tqdm in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from umap-learn) (4.67.3)
+Requirement already satisfied: llvmlite<0.47,>=0.46.0dev0 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from numba>=0.51.2->umap-learn) (0.46.0)
+Requirement already satisfied: joblib>=0.11 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from pynndescent>=0.5->umap-learn) (1.5.3)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /hpc/home/francesco.bernini1/.conda/envs/bioactivity-env/lib/python3.10/site-packages (from scikit-learn>=1.6->umap-learn) (3.6.0)
+🚀 Avvio main.py...
+📊 Caricamento bioactivities...
+📊 Caricamento mass_spectra_embeddings...
+📊 Caricamento protein_embeddings...
+
+✅ Dataset caricati con successo!
+   - Bioactivities: (10092, 36)
+   - Molecules: (5798, 507)
+   - Proteins (UniRep1900): (1142, 5701)
+Soglia ottimale: 5.16
+active: 5058 | inactive: 5034
+
+✅ Dataset merged:
+df_merged: (106055, 6205)
+
+--- BILANCIAMENTO CLASSI ---
+Originale (Active): 50.12%
+Merged    (Active): 53.38%
+📊 Dataset preparato:
+   - 500 features molecola + 5700 features proteina = 6200 totali
+   - 1142 proteine distinte
+   - 106055 campioni totali
+
+✅ StratifiedGroupKFold con 5 fold configurato
+Mappatura classi: inactive=0, active=1
+
+===========================================================================
+🚀 TRAINING E VALIDAZIONE
+===========================================================================
+
+🔄 Fold 1/5
+ > PCA(256) processing...
+   ⚙️ Training PCA(256)_SVM_Bagging... ✅
+ > PCA(500) processing...
+   ⚙️ Training PCA(500)_SVM_Bagging... ✅
+
+🔄 Fold 2/5
+ > PCA(256) processing...
+   ⚙️ Training PCA(256)_SVM_Bagging... ✅
+ > PCA(500) processing...
+   ⚙️ Training PCA(500)_SVM_Bagging... ✅
+
+🔄 Fold 3/5
+ > PCA(256) processing...
+   ⚙️ Training PCA(256)_SVM_Bagging... ✅
+ > PCA(500) processing...
+   ⚙️ Training PCA(500)_SVM_Bagging... ✅
+
+🔄 Fold 4/5
+ > PCA(256) processing...
+   ⚙️ Training PCA(256)_SVM_Bagging... ✅
+ > PCA(500) processing...
+   ⚙️ Training PCA(500)_SVM_Bagging... ✅
+
+🔄 Fold 5/5
+ > PCA(256) processing...
+   ⚙️ Training PCA(256)_SVM_Bagging... ✅
+ > PCA(500) processing...
+   ⚙️ Training PCA(500)_SVM_Bagging... ✅
+
+📈 Risultati per configurazione:
+   PCA(256)_SVM_Bagging: Recall = 0.743 ± 0.048
+   PCA(500)_SVM_Bagging: Recall = 0.748 ± 0.057
+
+📊 TABELLA RISULTATI FINALE:
+  Reduction        Model     Accuracy  ...     F1-score          AUC          MCC
+1  PCA(500)  SVM_Bagging  0.648±0.029  ...  0.694±0.030  0.719±0.038  0.291±0.062
+0  PCA(256)  SVM_Bagging  0.661±0.029  ...  0.700±0.029  0.727±0.035  0.317±0.061
+
+[2 rows x 8 columns]
+
+================================================================================
+🧐 DETTAGLIO DISTRIBUZIONE NEI FOLD (Training Recap)
+================================================================================
+Fold  | Train Size |  Val Size  | Train Active %  |  Val Active %  
+---------------------------------------------------------------------------
+  1   |   83880    |   22175    |      53.07     % |      54.53     %
+  2   |   83338    |   22717    |      53.89     % |      51.49     %
+  3   |   83374    |   22681    |      53.44     % |      53.17     %
+  4   |   86450    |   19605    |      53.28     % |      53.81     %
+  5   |   87178    |   18877    |      53.22     % |      54.10     %
+---------------------------------------------------------------------------
+🏁 Terminato.
