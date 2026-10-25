@@ -1,1 +1,6 @@
-models
+models/
+.venv/
+/main.py
+/main(SVM).py
+/main(XGBoost).ipynb
+/dataset_bioactivities/
